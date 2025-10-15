@@ -179,6 +179,8 @@
                         "category": "Car Park",
                         "details": "Car Park 22",
                         "color": "#bd1aea", // Pink
+                        "fill": "#bd1aea",
+                        "fill-opacity": 0.5
                     },
                     "geometry": {
                         "type": "Polygon",
@@ -217,6 +219,49 @@
                             ]
                             ]]
                             }
+                },
+                {
+                    "type": "Feature",
+                    "properties": {
+                    "name": "Car Park 23",
+                    "category": "Car Park",
+                    "color": "#bd1aea", // Pink
+                    },
+                    "geometry": {
+                    "coordinates": [
+                        [
+                        [
+                            -2.551711199995509,
+                            51.50399522684404
+                        ],
+                        [
+                            -2.552170541181738,
+                            51.50361541903163
+                        ],
+                        [
+                            -2.5510804628448795,
+                            51.503120383872385
+                        ],
+                        [
+                            -2.5505731307894735,
+                            51.50368796683591
+                        ],
+                        [
+                            -2.550902211042626,
+                            51.50383732959867
+                        ],
+                        [
+                            -2.5513272730353833,
+                            51.50396962192221
+                        ],
+                        [
+                            -2.551711199995509,
+                            51.50399522684404
+                        ]
+                        ]
+                    ],
+                    "type": "Polygon"
+                    }
                 },
                 {
                     "type": "Feature",
@@ -316,101 +361,58 @@
                         [
                         -2.5475565618100404,
                         51.50279604757614
-                        ]
+                        ]                        
                         ]]
                     }
-                },  {
-      "type": "Feature",
-      "properties": {
-        "name": "Cotswold  ct",
-        "category": "Accommodation",
-        "description": "student accommodation ",
-        "color": "#facc15" // Yellow/Amber
-      },
-      "geometry": {
-        "coordinates": [
-          [
-            [
-              -2.5493185123274316,
-              51.50379465457337
-            ],
-            [
-              -2.549531043324521,
-              51.50272349835194
-            ],
-            [
-              -2.546247096639604,
-              51.50302649728698
-            ],
-            [
-              -2.5467544286949817,
-              51.503841597098926
-            ],
-            [
-              -2.5478170836762786,
-              51.50373490947098
-            ],
-            [
-              -2.548454676666182,
-              51.50363248911353
-            ],
-            [
-              -2.5489208736902356,
-              51.50361541903163
-            ],
-            [
-              -2.5493185123274316,
-              51.50379465457337
-            ]
-          ]
-        ],
-        "type": "Polygon"
-      },
-      "id": 4
-    },{
-      "type": "Feature",
-      "properties": {
-        "name": "Car Park 23",
-        "category": "Car Park",
-        "color": "#bd1aea", // Pink
-      },
-      "geometry": {
-        "coordinates": [
-          [
-            [
-              -2.551711199995509,
-              51.50399522684404
-            ],
-            [
-              -2.552170541181738,
-              51.50361541903163
-            ],
-            [
-              -2.5510804628448795,
-              51.503120383872385
-            ],
-            [
-              -2.5505731307894735,
-              51.50368796683591
-            ],
-            [
-              -2.550902211042626,
-              51.50383732959867
-            ],
-            [
-              -2.5513272730353833,
-              51.50396962192221
-            ],
-            [
-              -2.551711199995509,
-              51.50399522684404
-            ]
-          ]
-        ],
-        "type": "Polygon"
-      },
-      "id": 5
-    }
+                },
+                {
+                "type": "Feature",
+                "properties": {
+                "name": "Cotswold  ct",
+                "category": "Accommodation",
+                "description": "student accommodation ",
+                "color": "#facc15" // Yellow/Amber
+                },
+                "geometry": {
+                "coordinates": [
+                        [
+                        [
+                        -2.5493185123274316,
+                        51.50379465457337
+                        ],
+                        [
+                        -2.549531043324521,
+                        51.50272349835194
+                        ],
+                        [
+                        -2.546247096639604,
+                        51.50302649728698
+                        ],
+                        [
+                        -2.5467544286949817,
+                        51.503841597098926
+                        ],
+                        [
+                        -2.5478170836762786,
+                        51.50373490947098
+                        ],
+                        [
+                        -2.548454676666182,
+                        51.50363248911353
+                        ],
+                        [
+                        -2.5489208736902356,
+                        51.50361541903163
+                        ],
+                        [
+                        -2.5493185123274316,
+                        51.50379465457337
+                        ]
+                        ]
+                        ],
+                "type": "Polygon"
+                }
+                }
                 ]
         };
 
@@ -521,11 +523,29 @@
                 const category = event.feature.getProperty('category');
                 const details = event.feature.getProperty('details');
                 
+                // Get the coordinates for the navigation link from the click event
+                const lat = event.latLng.lat();
+                const lng = event.latLng.lng();
+                
+                // Construct the Google Maps directions URL
+                const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+
                 infoWindow.setContent(`
                     <div class="p-1 max-w-xs">
-                        <h4 class="text-md font-bold text-indigo-700">✨ ${name}</h4>
+                        <h4 class="text-md font-bold text-indigo-700">${name}</h4>
                         <p class="text-sm mt-1 text-gray-700"><strong>Category:</strong> ${category}</p>
-                        <p class="text-sm text-gray-700"><strong>Details:</strong> ${details}</p>
+                        <p class="text-sm text-gray-700 mb-2"><strong>Details:</strong> ${details}</p>
+                        
+                        <!-- NEW NAVIGATION LINK -->
+                        <a href="${navigationUrl}" target="_blank" 
+                           class="inline-flex items-center text-sm font-semibold text-white bg-indigo-600 px-3 py-1 rounded-full hover:bg-indigo-700 transition duration-150 shadow-md">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.727A8 8 0 016.343 5.273L15.21 2.39a1 1 0 011.192.744l2.5 10a1 1 0 01-.744 1.192l-5.694 1.649z"/>
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18V6"/>
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12L8 12"/>
+                           </svg>
+                           Navigate to Here
+                        </a>
                     </div>
                 `);
                 infoWindow.setPosition(event.latLng);
