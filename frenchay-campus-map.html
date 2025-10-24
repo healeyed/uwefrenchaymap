@@ -69,17 +69,83 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
             width: 220px;
         }
+
+        /* Custom style for the POI selector */
+        #poi-selector {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236B7280'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
     </style>
     <script>
         let mapInstance; // Global variable to hold the map instance
         let buildingsLoaded = false;
-        let mapInitialized = false; // New flag to track initialization
+        let mapInitialized = false; 
         let buildingFeatures = []; // Array to store {feature, marker} objects for easy filtering
         let hiddenCategories = new Map(); // Map to track currently hidden categories: { 'CategoryName': true }
         let infoWindow;
         const uweFrenchayLocation = { lat: 51.5015, lng: -2.549 }; // Central coordinates
         const CLOUD_MAP_ID = '9ba11c71e746911dd677c62b'; // Constant for the custom map style ID
         let isCustomMap = true; // State tracker for map type (Custom Roadmap vs Satellite)
+        let poiMarker = null; // Global variable for the temporary POI marker
+
+        // --- New: Lookup Data Structure for Points of Interest (POI) ---
+        const pointOfInterestData = [
+                                    {
+                                        "name": "The Students' Union (U Block)",
+                                        "lat": 51.50056787,
+                                        "lng": -2.551535846,
+                                        "details": "Main student services and social hub.",
+                                        "floorId": 0
+                                    },
+                                    {
+                                        "name": "Library",
+                                        "lat": 51.50003517,
+                                        "lng": -2.54846534,
+                                        "details": "24/7 study space and book collection.",
+                                        "floorId": 0
+                                    },
+                                    {
+                                        "name": "2S526 S Block Room",
+                                        "lat": 51.49749095,
+                                        "lng": -2.54842925,
+                                        "details": "S Block Mens Shower Room",
+                                        "floorId": 2
+                                    },
+                                    {
+                                        "name": "2S527 S Block Room",
+                                        "lat": 51.49745444,
+                                        "lng": -2.548492402,
+                                        "details": "S Block Womens Shower Room",
+                                        "floorId": 2
+                                    },
+                                    {
+                                        "name": "3S505 S Block Room",
+                                        "lat": 51.49749954,
+                                        "lng": -2.548211297,
+                                        "details": "S Block Level 3 ",
+                                        "floorId": 3
+                                    },
+                                    {
+                                        "name": "3S703 S Block Room",
+                                        "lat": 51.49802319,
+                                        "lng": -2.548618706,
+                                        "details": "S Block Level 3 ",
+                                        "floorId": 3
+                                    },
+                                    {
+                                        "name": "4C001 C Block Room",
+                                        "lat": 51.49938953,
+                                        "lng": -2.548265932,
+                                        "details": "C Block ITS Staff Hotdesk",
+                                        "floorId": 4
+                                    }
+                                    ]
 
         // --- GeoJSON Data Structure ---
         const campusGeoJson = {
@@ -530,7 +596,7 @@
                 const lng = event.latLng.lng();
                 
                 // Construct the Google Maps directions URL
-                const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+                const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
 
                 infoWindow.setContent(`
                     <div class="p-1 max-w-xs">
@@ -538,7 +604,7 @@
                         <p class="text-sm mt-1 text-gray-700"><strong>Category:</strong> ${category}</p>
                         <p class="text-sm text-gray-700 mb-2"><strong>Details:</strong> ${details}</p>
                         
-                        <!-- NEW NAVIGATION LINK -->
+                        <!-- NAVIGATION LINK -->
                         <a href="${navigationUrl}" target="_blank" 
                            class="inline-flex items-center text-sm font-semibold text-white bg-indigo-600 px-3 py-1 rounded-full hover:bg-indigo-700 transition duration-150 shadow-md">
                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -744,9 +810,113 @@
             mapInstance.setOptions(options);
         }
         
+        // --- POI Selection Logic ---
+
         /**
-         * The toggleLabels function has been removed as requested.
+         * Populates the new select dropdown with POI data.
          */
+        function populatePoiDropdown() {
+            const select = document.getElementById('poi-selector');
+            if (!select) return;
+
+            // Clear previous options
+            select.innerHTML = ''; 
+
+            // Add default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "Find a place...";
+            select.appendChild(defaultOption);
+
+            // Add POI options
+            pointOfInterestData.forEach(poi => {
+                const option = document.createElement('option');
+                // Encode data into the value field: lat|lng|name|details
+                option.value = `${poi.lat}|${poi.lng}|${poi.name}|${poi.details}`;
+                option.textContent = poi.name;
+                select.appendChild(option);
+            });
+        }
+        
+        /**
+         * Handles the selection of a point of interest from the dropdown.
+         * @param {Event} event The change event from the select element.
+         */
+        window.handlePoiSelection = function(event) {
+            const selectedValue = event.target.value;
+            
+            // Clear existing marker and InfoWindow if present
+            if (poiMarker) {
+                poiMarker.setMap(null);
+                poiMarker = null;
+                infoWindow.close();
+            }
+            
+            if (selectedValue === "") {
+                // If the user selects the default "Find a place..." option, just clear and return
+                return;
+            }
+
+            // Decode data from the value field: lat|lng|name|details
+            const parts = selectedValue.split('|');
+            if (parts.length < 4) return;
+            
+            const [latStr, lngStr, name, details] = parts; 
+            const lat = parseFloat(latStr); // Parse to float
+            const lng = parseFloat(lngStr); // Parse to float
+            const position = { lat: lat, lng: lng };
+            
+            // Construct the Google Maps directions URL
+            const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+
+            // Create a distinctive new marker
+            poiMarker = new google.maps.Marker({
+                position: position,
+                map: mapInstance,
+                title: name,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    fillColor: '#ef4444', // Red color for highlight
+                    fillOpacity: 1,
+                    strokeWeight: 0,
+                    scale: 10,
+                },
+                animation: google.maps.Animation.DROP 
+            });
+            
+            // Set map center and open info window
+            mapInstance.setCenter(position);
+            mapInstance.setZoom(18); // Zoom in closer
+
+            infoWindow.setContent(`
+                <div class="p-2 max-w-xs text-center">
+                    <h4 class="text-lg font-extrabold text-red-700">${name}</h4>
+                    <p class="text-sm mt-1 text-gray-700">${details}</p>
+                    
+                    <!-- New Navigation Button matching the red pin -->
+                    <a href="${navigationUrl}" target="_blank" 
+                       class="mt-3 inline-flex items-center text-sm font-semibold text-white bg-red-600 px-3 py-1 rounded-full hover:bg-red-700 transition duration-150 shadow-md">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.727A8 8 0 016.343 5.273L15.21 2.39a1 1 0 011.192.744l2.5 10a1 1 0 01-.744 1.192l-5.694 1.649z"/>
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18V6"/>
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12L8 12"/>
+                       </svg>
+                       Navigate to Here
+                    </a>
+                    
+                    <p class="text-xs text-gray-500 mt-2">(Temporary Pin)</p>
+                </div>
+            `);
+            infoWindow.open(mapInstance, poiMarker);
+            
+            // Add a click listener to the new marker to reopen the InfoWindow
+            poiMarker.addListener('click', () => {
+                infoWindow.open(mapInstance, poiMarker);
+            });
+        }
+
+        // --- End of POI Selection Logic ---
+
 
         // Make initMap global so the dynamically loaded script can call it
         window.initMap = function() {
@@ -759,7 +929,6 @@
                 fullscreenControl: false,
                 mapId: CLOUD_MAP_ID, 
                 mapTypeId: 'roadmap', 
-                // Note: The map now loads the custom style by default via mapId.
             });
 
             mapInstance = map;
@@ -768,6 +937,7 @@
             addEastEntranceMarker();
             addDirectionalArrow();
             createLegend();
+            populatePoiDropdown(); // <-- Call to populate the new dropdown
             
             // Set initial button text
             const mapButton = document.getElementById('map-toggle-button');
@@ -855,22 +1025,34 @@
         <div id="map-modal" class="hidden" onclick="handleModalClick(event)">
             <div class="modal-content">
                 
-                <!-- Control Group for Toggles -->
-                <div class="absolute top-4 right-24 z-[5000]">
-                    <!-- Existing Map Type Toggle Button -->
-                    <button id="map-toggle-button" onclick="toggleMapType()" 
-                        class="px-3 py-2 bg-white text-indigo-700 font-semibold text-sm rounded-full shadow-lg hover:bg-indigo-50 transition duration-150">
-                        Loading...
-                    </button>
+                <!-- Control Group for POI Selector, Map Toggle, and Close Button -->
+                <div class="absolute top-4 left-4 right-4 z-[5000] flex justify-between items-center space-x-4">
+                    
+                    <!-- Dropdown Container (Left Side) -->
+                    <div class="flex-grow max-w-sm">
+                        <label for="poi-selector" class="sr-only">Find a place</label>
+                        <select id="poi-selector" onchange="handlePoiSelection(event)"
+                            class="w-full px-4 py-2 bg-white text-gray-800 font-medium text-base rounded-full shadow-lg border-2 border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition duration-150 cursor-pointer">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                    
+                    <!-- Map Toggle and Close Buttons (Right Side) -->
+                    <div class="flex items-center space-x-4">
+                        <!-- Existing Map Type Toggle Button -->
+                        <button id="map-toggle-button" onclick="toggleMapType()" 
+                            class="px-3 py-2 bg-white text-indigo-700 font-semibold text-sm rounded-full shadow-lg hover:bg-indigo-50 transition duration-150">
+                            Loading...
+                        </button>
+                        <!-- Close Button -->
+                        <button onclick="closeModal()" class="p-2 rounded-full bg-white text-gray-800 hover:bg-red-100 shadow-xl transition duration-150 transform hover:scale-110">
+                            <!-- Icon for close -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-
-                <!-- Close Button (right-4) -->
-                <button onclick="closeModal()" class="absolute top-4 right-4 z-[5000] p-2 rounded-full bg-white text-gray-800 hover:bg-red-100 shadow-xl transition duration-150 transform hover:scale-110">
-                    <!-- Icon for close -->
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
 
                 <!-- Map Container -->
                 <div id="map"></div>
@@ -887,4 +1069,3 @@
     <div id="message-container" class="hidden"></div>
 </body>
 </html>
-
