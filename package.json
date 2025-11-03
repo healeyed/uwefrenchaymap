@@ -1,16 +1,14 @@
 {
   "name": "uwefrenchaymap",
+  "private": true,
   "version": "1.0.0",
-  "main": "frenchay-campus-map.html",
+  "type": "module",
   "scripts": {
-    "serve": "http-server -a localhost -o /frenchay-campus-map.html",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "vite": "^5.3.1"
   }
 }
