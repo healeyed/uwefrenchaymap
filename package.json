@@ -1,0 +1,16 @@
+{
+  "name": "uwefrenchaymap",
+  "version": "1.0.0",
+  "main": "frenchay-campus-map.html",
+  "scripts": {
+    "serve": "http-server -a localhost -o /frenchay-campus-map.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
