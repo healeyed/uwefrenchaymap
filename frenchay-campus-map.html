@@ -535,92 +535,114 @@
         }
         
         /**
-         * Loads the GeoJSON data, applies default styling, creates labels (markers).
+         * Extracts unique categories and colors from GeoJSON data for the legend.
+         * Now reads features from mapInstance.data (loaded via loadGeoJson).
+         */
+        function getUniqueCategories() {
+            const categories = new Map();
+            if (!mapInstance) return [];
+            mapInstance.data.forEach(feature => {
+                const category = feature.getProperty('category');
+                const color = feature.getProperty('color') || '#888888';
+                if (category) categories.set(category, color);
+            });
+            return Array.from(categories, ([category, color]) => ({ category, color }));
+        }
+
+        /**
+         * Loads the GeoJSON data using Google Maps API's loadGeoJson, applies styling,
+         * and creates label markers. Expects the file to be served at /frenchay-campus-geojson.json
+         * (place file in Vite's public/ folder).
          */
         function loadBuildingData() {
             if (buildingsLoaded) return;
 
-            // --- 1. Load GeoJSON Data ---
-            mapInstance.data.addGeoJson("frenchay-campus-geojson.json");
+            // Load from the served file (must be in public/)
+            mapInstance.data.loadGeoJson('/frenchay-campus-geojson.json', null, (features) => {
+                // Apply styling
+                mapInstance.data.setStyle(styleFeature);
 
-            // --- 2. Set Default Styling and Markers ---
-            mapInstance.data.setStyle(styleFeature);
+                // Create markers for features
+                features.forEach(feature => {
+                    // safe center calc for Polygon / MultiPolygon
+                    const geometry = feature.getGeometry();
+                    let center = { lat: uweFrenchayLocation.lat, lng: uweFrenchayLocation.lng };
+                    if (geometry && geometry.getType) {
+                        const type = geometry.getType();
+                        try {
+                            if (type === 'Polygon') {
+                                const ring = geometry.getArray()[0].getArray();
+                                let latSum = 0, lngSum = 0, cnt = 0;
+                                ring.forEach(pt => { latSum += pt.lat(); lngSum += pt.lng(); cnt++; });
+                                if (cnt) center = { lat: latSum / cnt, lng: lngSum / cnt };
+                            } else if (type === 'MultiPolygon') {
+                                const poly = geometry.getArray()[0].getArray()[0].getArray();
+                                let latSum = 0, lngSum = 0, cnt = 0;
+                                poly.forEach(pt => { latSum += pt.lat(); lngSum += pt.lng(); cnt++; });
+                                if (cnt) center = { lat: latSum / cnt, lng: lngSum / cnt };
+                            }
+                        } catch (e) {
+                            // fallback to map center
+                        }
+                    }
 
-            mapInstance.data.forEach(feature => {
-                const center = calculateApproximateCenter(feature.getGeometry());
-                const name = feature.getProperty('name');
-
-                const marker = new google.maps.Marker({
-                    position: center,
-                    map: mapInstance,
-                    label: {
-                        text: name,
-                        fontWeight: 'bold',
-                        // Label text color is black
-                        color: 'black', 
-                        fontSize: '14px',
-                    },
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 0,
-                    },
+                    const name = feature.getProperty('name') || '';
+                    const marker = new google.maps.Marker({
+                        position: center,
+                        map: mapInstance,
+                        label: { text: name, fontWeight: 'bold', color: 'black', fontSize: '14px' },
+                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 },
+                    });
+                    buildingFeatures.push({ feature, marker });
                 });
-                buildingFeatures.push({ feature, marker });
-            });
 
-            // --- 3. Add Interactivity (Hover & Click) ---
-            infoWindow = new google.maps.InfoWindow();
+                // Attach interactions
+                infoWindow = new google.maps.InfoWindow();
 
-            mapInstance.data.addListener('mouseover', (event) => {
-                mapInstance.data.overrideStyle(event.feature, {
-                    fillColor: '#ef4444',
-                    strokeWeight: 4,
-                    strokeColor: '#b91c1c',
-                    fillOpacity: 0.9
+                mapInstance.data.addListener('mouseover', (event) => {
+                    mapInstance.data.overrideStyle(event.feature, {
+                        fillColor: '#ef4444',
+                        strokeWeight: 4,
+                        strokeColor: '#b91c1c',
+                        fillOpacity: 0.9
+                    });
                 });
+
+                mapInstance.data.addListener('mouseout', (event) => {
+                    if (!hiddenCategories.has(event.feature.getProperty('category'))) {
+                        mapInstance.data.revertStyle();
+                    }
+                });
+
+                mapInstance.data.addListener('click', (event) => {
+                    const name = event.feature.getProperty('name');
+                    const category = event.feature.getProperty('category');
+                    const details = event.feature.getProperty('details') || '';
+
+                    const lat = event.latLng.lat();
+                    const lng = event.latLng.lng();
+                    const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+
+                    infoWindow.setContent(`
+                        <div class="p-1 max-w-xs">
+                            <h4 class="text-md font-bold text-indigo-700">${name}</h4>
+                            <p class="text-sm mt-1 text-gray-700"><strong>Category:</strong> ${category}</p>
+                            <p class="text-sm text-gray-700 mb-2"><strong>Details:</strong> ${details}</p>
+                            <a href="${navigationUrl}" target="_blank" 
+                               class="inline-flex items-center text-sm font-semibold text-white bg-indigo-600 px-3 py-1 rounded-full hover:bg-indigo-700 transition duration-150 shadow-md">
+                               Navigate to Here
+                            </a>
+                        </div>
+                    `);
+                    infoWindow.setPosition(event.latLng);
+                    infoWindow.open(mapInstance);
+                });
+
+                buildingsLoaded = true;
+                // If legend already created, refresh it
+                const legendDiv = document.getElementById('map-legend');
+                if (legendDiv) createLegend();
             });
-
-            mapInstance.data.addListener('mouseout', (event) => {
-                if (!hiddenCategories.has(event.feature.getProperty('category'))) {
-                    mapInstance.data.revertStyle();
-                }
-            });
-
-            mapInstance.data.addListener('click', (event) => {
-                const name = event.feature.getProperty('name');
-                const category = event.feature.getProperty('category');
-                const details = event.feature.getProperty('details');
-                
-                // Get the coordinates for the navigation link from the click event
-                const lat = event.latLng.lat();
-                const lng = event.latLng.lng();
-                
-                // Construct the Google Maps directions URL
-                const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
-
-                infoWindow.setContent(`
-                    <div class="p-1 max-w-xs">
-                        <h4 class="text-md font-bold text-indigo-700">${name}</h4>
-                        <p class="text-sm mt-1 text-gray-700"><strong>Category:</strong> ${category}</p>
-                        <p class="text-sm text-gray-700 mb-2"><strong>Details:</strong> ${details}</p>
-                        
-                        <!-- NAVIGATION LINK -->
-                        <a href="${navigationUrl}" target="_blank" 
-                           class="inline-flex items-center text-sm font-semibold text-white bg-indigo-600 px-3 py-1 rounded-full hover:bg-indigo-700 transition duration-150 shadow-md">
-                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.727A8 8 0 016.343 5.273L15.21 2.39a1 1 0 011.192.744l2.5 10a1 1 0 01-.744 1.192l-5.694 1.649z"/>
-                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18V6"/>
-                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12L8 12"/>
-                           </svg>
-                           Navigate to Here
-                        </a>
-                    </div>
-                `);
-                infoWindow.setPosition(event.latLng);
-                infoWindow.open(mapInstance);
-            });
-
-            buildingsLoaded = true;
         }
         
         /**
@@ -735,18 +757,6 @@
             });
         }
         
-        /**
-         * Extracts unique categories and colors from GeoJSON data for the legend.
-         */
-        function getUniqueCategories() {
-            const categories = new Map();
-            campusGeoJson.features.forEach(feature => {
-                const props = feature.properties;
-                categories.set(props.category, props.color);
-            });
-            return Array.from(categories, ([category, color]) => ({ category, color }));
-        }
-
         /**
          * Populates the custom HTML legend with data from unique categories.
          * Note: Legend text color remains white as per prior request.
