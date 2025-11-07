@@ -29,13 +29,15 @@
                 <!-- Control Group for POI Selector, Map Toggle, and Close Button -->
                 <div class="absolute top-4 left-4 right-4 z-[5000] flex justify-between items-center space-x-4">
                     
-                    <!-- Dropdown Container (Left Side) -->
-                    <div class="flex-grow max-w-sm">
+                    <!-- Autocomplete Container (Left Side) -->
+                    <div class="flex-grow max-w-sm relative">
                         <label for="poi-selector" class="sr-only">Find a place</label>
-                        <select id="poi-selector"
-                            class="w-full px-4 py-2 bg-white text-gray-800 font-medium text-base rounded-full shadow-lg border-2 border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition duration-150 cursor-pointer">
+                        <input type="text" id="poi-selector" placeholder="Find a place..."
+                            class="w-full px-4 py-2 bg-white text-gray-800 font-medium text-base rounded-full shadow-lg border-2 border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition duration-150"
+                            autocomplete="off">
+                        <div id="poi-autocomplete-list" class="absolute w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 hidden max-h-60 overflow-y-auto z-[5001]">
                             <!-- Options populated by JS -->
-                        </select>
+                        </div>
                     </div>
                     
                     <!-- Map Toggle and Close Buttons (Right Side) -->

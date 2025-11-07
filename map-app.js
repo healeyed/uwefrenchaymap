@@ -213,28 +213,75 @@ function toggleMapType() {
   mapInstance.setOptions(options);
 }
 
-function populatePoiDropdown() {
-  const select = document.getElementById('poi-selector');
-  if (!select) return;
-  select.innerHTML = '';
-  const defaultOption = document.createElement('option');
-  defaultOption.value = '';
-  defaultOption.textContent = 'Find a place...';
-  select.appendChild(defaultOption);
-  pointOfInterestData.forEach(poi => {
-    const option = document.createElement('option');
-    option.value = `${poi.lat}|${poi.lng}|${poi.name}|${poi.details}`;
-    option.textContent = poi.name;
-    select.appendChild(option);
+function filterPOIs(searchText) {
+  if (!searchText) return [];
+  const lowerSearch = searchText.toLowerCase();
+  return pointOfInterestData.filter(poi => 
+    poi.name.toLowerCase().includes(lowerSearch)
+  );
+}
+
+function showAutocompleteList(items) {
+  const list = document.getElementById('poi-autocomplete-list');
+  list.innerHTML = '';
+  
+  if (items.length === 0) {
+    list.classList.add('hidden');
+    return;
+  }
+
+  items.forEach(poi => {
+    const div = document.createElement('div');
+    div.className = 'px-4 py-2 hover:bg-indigo-50 cursor-pointer transition duration-150';
+    div.textContent = poi.name;
+    div.addEventListener('click', () => handlePoiSelection(poi));
+    list.appendChild(div);
+  });
+  
+  list.classList.remove('hidden');
+}
+
+function setupPoiAutocomplete() {
+  const input = document.getElementById('poi-selector');
+  const list = document.getElementById('poi-autocomplete-list');
+  if (!input || !list) return;
+
+  input.addEventListener('input', (e) => {
+    const searchText = e.target.value;
+    const filteredItems = filterPOIs(searchText);
+    showAutocompleteList(filteredItems);
+  });
+
+  input.addEventListener('blur', () => {
+    // Small delay to allow click events on the list to fire
+    setTimeout(() => list.classList.add('hidden'), 200);
+  });
+
+  input.addEventListener('focus', () => {
+    if (input.value) {
+      const filteredItems = filterPOIs(input.value);
+      showAutocompleteList(filteredItems);
+    }
+  });
+
+  // Close autocomplete when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !list.contains(e.target)) {
+      list.classList.add('hidden');
+    }
   });
 }
 
-function handlePoiSelection(event) {
-  const selectedValue = event.target.value;
+function handlePoiSelection(poi) {
+  const input = document.getElementById('poi-selector');
+  const list = document.getElementById('poi-autocomplete-list');
+  
   if (poiMarker) { poiMarker.setMap(null); poiMarker = null; infoWindow && infoWindow.close(); }
-  if (selectedValue === '') return;
-  const parts = selectedValue.split('|'); if (parts.length < 4) return;
-  const [latStr, lngStr, name, details] = parts; const lat = parseFloat(latStr); const lng = parseFloat(lngStr);
+  
+  input.value = poi.name;
+  list.classList.add('hidden');
+  
+  const { lat, lng, name, details } = poi;
   const position = { lat, lng };
   const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
   poiMarker = new google.maps.Marker({ position, map: mapInstance, title: name, icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: '#ef4444', fillOpacity: 1, strokeWeight: 0, scale: 10 }, animation: google.maps.Animation.DROP });
@@ -254,7 +301,7 @@ function handlePoiSelection(event) {
 function initMap() {
   const map = new google.maps.Map(document.getElementById('map'), { zoom: 17, center: uweFrenchayLocation, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, mapId: CLOUD_MAP_ID, mapTypeId: 'roadmap' });
   mapInstance = map;
-  loadBuildingData(); addEastEntranceMarker(); addDirectionalArrow(); createLegend(); populatePoiDropdown();
+  loadBuildingData(); addEastEntranceMarker(); addDirectionalArrow(); createLegend();
   const mapButton = document.getElementById('map-toggle-button'); if (mapButton) mapButton.innerHTML = 'Switch to <span class="font-bold">Default Satellite</span>';
 }
 
@@ -279,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modal = document.getElementById('map-modal'); if (modal) modal.addEventListener('click', handleModalClick);
   const closeBtns = document.querySelectorAll('[data-close-modal]'); closeBtns.forEach(b => b.addEventListener('click', closeModal));
   const mapToggle = document.getElementById('map-toggle-button'); if (mapToggle) mapToggle.addEventListener('click', toggleMapType);
-  const poiSelect = document.getElementById('poi-selector'); if (poiSelect) poiSelect.addEventListener('change', handlePoiSelection);
+  setupPoiAutocomplete();
   // ESC to close
   document.addEventListener('keydown', (e) => { const modalEl = document.getElementById('map-modal'); if (e.key === 'Escape' && modalEl && !modalEl.classList.contains('hidden')) closeModal(); });
 });
