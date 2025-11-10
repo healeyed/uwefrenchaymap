@@ -17,22 +17,22 @@ export const pointOfInterestData = [
     },
     {
         "name": "2S526 S Block Room",
-        "lat": 51.49749095,
-        "lng": -2.54842925,
+        "lat": 51.498347920563894,
+        "lng": -2.548272427944032,
         "details": "S Block Mens Shower Room",
         "floorId": 2
     },
     {
         "name": "2S527 S Block Room",
-        "lat": 51.49745444,
-        "lng": -2.548492402,
+        "lat": 51.498347920563894,
+        "lng": -2.548272427944032,
         "details": "S Block Womens Shower Room",
         "floorId": 2
     },
     {
         "name": "3S505 S Block Room",
-        "lat": 51.49749954,
-        "lng": -2.548211297,
+        "lat": 51.49834792056389,
+        "lng": -2.548272427944032,
         "details": "S Block Level 3 ",
         "floorId": 3
     },
@@ -45,9 +45,9 @@ export const pointOfInterestData = [
     },
     {
         "name": "4C001 C Block Room",
-        "lat": 51.49938953,
-        "lng": -2.548265932,
+        "lat": 51.49908997276727,
+        "lng": -2.5482348651261577,
         "details": "C Block ITS Staff Hotdesk",
         "floorId": 4
     }
-];
+]; 
